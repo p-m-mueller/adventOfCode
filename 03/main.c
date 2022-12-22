@@ -99,7 +99,7 @@ char Luggage_rucksack_wrong_item(const int size, const char *items)
 	}
 }
 
-int Luggage_rucksack_wrong_item_priority(const char *item)
+int Item_priority(const char *item)
 {
 	if (!isalpha(*item))
 	{
@@ -125,8 +125,65 @@ int Luggage_sum_priority_wrong_items(Luggage luggage)
 		start = luggage->rucksack_item_ptr[r];
 		len = luggage->rucksack_item_ptr[r+1] - start;
 		item = Luggage_rucksack_wrong_item(len, &luggage->items[start]);
-		priority = Luggage_rucksack_wrong_item_priority(&item);
+		priority = Item_priority(&item);
 		sum += priority;
+	}
+	return sum;
+}
+
+
+char Group_identify_badge(const int group, const Luggage luggage)
+{
+	unsigned int i, j, r;
+	unsigned int flag[3];
+	char badge;
+
+	// Pick item from first rucksack to search in the other rucksacks
+	for (i = luggage->rucksack_item_ptr[group*3+0]; i < luggage->rucksack_item_ptr[group*3+1]; ++i)
+	{
+		badge = luggage->items[i];
+		flag[0] = 1;
+
+		// Search the other rucksacks of the group
+		for (r = 1; r < 3; ++r)
+		{
+			flag[r] = 0;
+			for (j = luggage->rucksack_item_ptr[group*3+r]; j < luggage->rucksack_item_ptr[group*3+r+1]; ++j)
+			{
+				if (luggage->items[j] == badge)
+				{
+					flag[r] = 1;
+					break;
+				}
+			}
+		}
+
+		// Flag flag[0] == 1 if and only if all groups contain the badge. 
+		// That is, flag[0] <- flag[0] * falg[1] * flag[2].
+		for (r = 1; r < 3; ++r)
+			flag[0] *= flag[r];
+
+		if (flag[0]) return badge;
+	}
+	return '\0';
+}
+
+int Luggage_sum_priority_group_badges(const Luggage luggage)
+{
+	int sum, g;
+	char group_badge;
+	
+	if (luggage->rucksacks % 3 != 0) 	
+	{
+		perror("Number of rucksacks is not a multiple of 3.\n");
+		return -1;
+	}
+
+	sum = 0;
+	for (g = 0; g < (int)(luggage->rucksacks/3); ++g)
+	{
+		group_badge = Group_identify_badge(g, luggage);
+		sum +=  Item_priority(&group_badge);
 	}
 	return sum;
 }
@@ -135,6 +192,7 @@ int main(int argc, char **argv)
 {
 	Luggage luggage;
 	int sum_priority_wrong_itmes;
+	int sum_priority_group_badges;
 
 	Luggage_create(&luggage);
 
@@ -144,9 +202,13 @@ int main(int argc, char **argv)
 	{
 		Luggage_read_from_file(argv[1], luggage);
 
+		// Part 1
 		sum_priority_wrong_itmes = Luggage_sum_priority_wrong_items(luggage);
 		printf("The sum of the priority of wrong items: %d\n", sum_priority_wrong_itmes);	
-	
+
+		// Part 2
+		sum_priority_group_badges = Luggage_sum_priority_group_badges(luggage);	
+		printf("The sum of the priority of group badges: %d\n", sum_priority_group_badges);	
 	}
 
 	Luggage_destroy(&luggage);
