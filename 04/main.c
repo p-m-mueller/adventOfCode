@@ -59,20 +59,29 @@ void Campdb_read_from_file(const char *filename, Campdb cdb)
 	fclose(fp);
 }
 
-/* Test if interval I0 = [s0, e0] is fully contained in I1 = [s1, e1]. This is the case if
+/*       |------|
+ *   |-----------------|
+ *  s1   s0     e0     e1
+ *
+ * Test if interval I0 = [s0, e0] is fully contained in I1 = [s1, e1]. This is the case if
  *
  *  s1 <= s0 <= e0 <= e1
+ *
  */
 unsigned int Pair_contained(const unsigned int *restrict I0, const unsigned int *restrict I1)
 {
-	if ( I1[0] <= I0[0] && I0[1] <= I1[1] ) 
-		return 1;
-	else 
-		return 0;
+	if (I0[0] <= I0[1] && I1[0] <= I1[1])
+		if ( I1[0] <= I0[0] && I0[1] <= I1[1] ) 
+			return 1;
+		else 
+			return 0;
+	else
+		fprintf(stderr, "Error in Pair_contained(): No valid input: I0 = [%d, %d] and I1 = [%d, %d]\n", I0[0], I0[1], I1[0], I1[1]);
+	return 0;
 }
 
 
-unsigned int Campdb_sum_contained_ranges(Campdb cdb)
+unsigned int Campdb_sum_contained_ranges(const Campdb cdb)
 {
 	unsigned int sum, p, *ranges;
 
@@ -88,11 +97,56 @@ unsigned int Campdb_sum_contained_ranges(Campdb cdb)
 	return sum;
 }
 
+/*          I0      I1
+ *  |--------------|
+ *           |--------------|
+ *  s0       s1    e0       e1
+ *
+ * Test if the Intervals I0 = [s0, e0] and I1 = [s1, e1] overlap. This is the case if 
+ *
+ *   s0 <= s1 <= e0 <= e1  
+ * and
+ *   s1 <= e0
+ *
+ * */
+unsigned int Pair_overlap(const unsigned int *restrict I0, const unsigned int *restrict I1)
+{
+	if (I0[0] <= I0[1] && I1[0] <= I1[1])
+		if (I0[0] <= I1[0] && I1[0] <= I0[1] && I0[1] <= I1[1]) 
+			return 1;
+		else if (Pair_contained(I0, I1))
+			return 1;
+		else
+			return 0;
+	else
+		fprintf(stderr, "Error in Pair_overlap(): No valid input: I0 = [%d, %d] and I1 = [%d, %d]\n", I0[0], I0[1], I1[0], I1[1]);
+	return 0;
+}
+
+unsigned int Campdb_sum_overlapping_ranges(const Campdb cdb)
+{
+	unsigned int sum, p, *ranges;
+
+	sum = 0;
+	for (p = 0; p < cdb->pairs; ++p)
+	{
+		ranges = &cdb->section_ranges[p*4];
+		if (Pair_overlap(&ranges[0], &ranges[2]))
+		{
+			sum++;
+		}
+		else if (Pair_overlap(&ranges[2], &ranges[0]))
+		{
+			sum++;
+		}
+	}
+	return sum;
+}
 
 int main(int argc, char **argv)
 {
 	Campdb cdb;
-	unsigned int sum_camp_ranges_containted;
+	unsigned int sum_camp_ranges_containted, sum_camp_ranges_overlap;
 
 	Campdb_create(&cdb);
 
@@ -102,8 +156,13 @@ int main(int argc, char **argv)
 	{
 		Campdb_read_from_file(argv[1], cdb);
 
+		// Part 1: Count fully contained overlapping section ranges
 		sum_camp_ranges_containted = Campdb_sum_contained_ranges(cdb);
 		printf("Number of section ranges that are fully contained in there peers range: %d\n", sum_camp_ranges_containted);
+		
+		// Part 2: Count overlaping section ranges
+		sum_camp_ranges_overlap = Campdb_sum_overlapping_ranges(cdb);
+		printf("Number of section ranges that overlap with there peers ranges: %d\n", sum_camp_ranges_overlap);
 	}
 	Campdb_destroy(&cdb);
 
