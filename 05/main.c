@@ -175,7 +175,7 @@ void Supplies_read_from_file(const char *filename, Supplies supplies)
  *     0   1   2    s
  *
  */
-void Supplies_apply_moves(Supplies supplies)
+int Supplies_apply_moves(Supplies supplies, unsigned int model)
 {
 	unsigned int *stack_fill;
 	char *crates_map;
@@ -205,22 +205,50 @@ void Supplies_apply_moves(Supplies supplies)
 	}
 
 	// Move crates
-	for (r = 0; r < supplies->rearrangements; ++r)
+	if (model == 9000)
 	{
-		number_of_crates = supplies->moves[r*3+0];
-		source_stack = supplies->moves[r*3+1];
-		dest_stack = supplies->moves[r*3+2];
-
-		for (m = 0; m < number_of_crates; ++m)
+		for (r = 0; r < supplies->rearrangements; ++r)
 		{
-			source_idx = source_stack*max_stack_size+stack_fill[source_stack]-1;
-			dest_idx = dest_stack*max_stack_size+stack_fill[dest_stack];
-
-			crates_map[dest_idx] = crates_map[source_idx];
-			crates_map[source_idx] = ' ';
-			stack_fill[dest_stack]++;
-			stack_fill[source_stack]--;
+			number_of_crates = supplies->moves[r*3+0];
+			source_stack = supplies->moves[r*3+1];
+			dest_stack = supplies->moves[r*3+2];
+	
+			for (m = 0; m < number_of_crates; ++m)
+			{
+				source_idx = source_stack*max_stack_size+stack_fill[source_stack]-1;
+				dest_idx = dest_stack*max_stack_size+stack_fill[dest_stack];
+	
+				crates_map[dest_idx] = crates_map[source_idx];
+				crates_map[source_idx] = ' ';
+				stack_fill[dest_stack]++;
+				stack_fill[source_stack]--;
+			}
 		}
+	}
+	else if (model == 9001)
+	{
+		for (r = 0; r < supplies->rearrangements; ++r)
+		{
+			number_of_crates = supplies->moves[r*3+0];
+			source_stack = supplies->moves[r*3+1];
+			dest_stack = supplies->moves[r*3+2];
+
+			for (m = 0; m < number_of_crates; ++m)
+			{
+				source_idx = source_stack*max_stack_size+stack_fill[source_stack]-number_of_crates+m;
+				dest_idx = dest_stack*max_stack_size+stack_fill[dest_stack];
+	
+				crates_map[dest_idx] = crates_map[source_idx];
+				crates_map[source_idx] = ' ';
+				stack_fill[dest_stack]++;
+			}
+			stack_fill[source_stack] -= number_of_crates;
+		}
+	}
+	else
+	{
+		perror("Unknown CrateMover model (9000 or 9001)\n");
+		return 1;
 	}
 
 	printf("Final configuration:\n");
@@ -249,13 +277,16 @@ void Supplies_apply_moves(Supplies supplies)
 
 	free(crates_map);
 	free(stack_fill);	
+
+	return 0;
 }
 
 int main(int argc, char **argv)
 {
 	Supplies supplies;
+	unsigned int crate_mover_model;
 
-	if (argc < 2)
+	if (argc < 3)
 	{
 		perror("Not enough input arguments.\n");
 		return 1;
@@ -264,11 +295,12 @@ int main(int argc, char **argv)
 	{
 		Supplies_create(&supplies);
 
-		Supplies_read_from_file(argv[1], supplies);
+		Supplies_read_from_file(argv[2], supplies);
 
-		Supplies_apply_moves(supplies);
+	  	crate_mover_model = atoi(argv[1]);
+		Supplies_apply_moves(supplies, crate_mover_model);
 
-		printf("Upper most crates in stacks:\n");
+		printf("Upper most crates in stacks using CrateMover %d:\n", crate_mover_model);
 		printf("Stack: ");
 		for (int s = 0; s < supplies->stacks; ++s)
 			printf("%d ", s);
