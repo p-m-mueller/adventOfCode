@@ -53,9 +53,14 @@ int Block_all_char_differ(const unsigned int len, const char *cblock)
 {
 	int i, j;
 
+	//printf("%s\n", cblock);
+
 	for (i = 0; i < len; ++i)
 		for (j = i+1; j < len; ++j)
+		{
+			//printf(" %c ?= %c\n", cblock[i], cblock[j]);
 			if (cblock[i] == cblock[j]) return 0;
+		}
 
 	return 1;
 }
@@ -65,7 +70,7 @@ int Elfstream_get_start_of_pack_marker(Elfstream es)
 	char cblock[4];
 	int c;
 
-	for (c = 4; c < es->len-4; ++c)
+	for (c = 4; c < es->len; ++c)
 	{
 		memcpy(cblock, es->buf+c-4, 4*sizeof(char));
 		if (Block_all_char_differ(4, cblock)) 
@@ -73,10 +78,23 @@ int Elfstream_get_start_of_pack_marker(Elfstream es)
 	}
 }
 
+int Elfstream_get_start_of_message_marker(Elfstream es)
+{
+	char cblock[14];
+	int c;
+
+	for (c = 14; c < es->len; ++c)
+	{
+		memcpy(cblock, es->buf+c-14, 14*sizeof(char));
+		if (Block_all_char_differ(14, cblock)) 
+			return c;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	Elfstream es;
-	int first_marker_pos;
+	int start_of_pack_marker, start_of_message_marker;
 
 	if (argc < 2)
 	{
@@ -89,8 +107,13 @@ int main(int argc, char **argv)
 
 		Elfstream_read_from_file(argv[1], es);
 
-		first_marker_pos = Elfstream_get_start_of_pack_marker(es);
-		printf("First marcer occurs at position %d\n.", first_marker_pos);
+		// Part 1
+		start_of_pack_marker = Elfstream_get_start_of_pack_marker(es);
+		printf("Start of pack marker at: %d\n", start_of_pack_marker);
+		
+		// Part 2
+		start_of_message_marker = Elfstream_get_start_of_message_marker(es);
+		printf("Start of message marker at: %d\n", start_of_message_marker);
 
 		Elfstream_destroy(&es);
 	}

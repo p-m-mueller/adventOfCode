@@ -9,3 +9,4 @@ test:tuning-trouble
 	./tuning-trouble test1.txt	
 	./tuning-trouble test2.txt	
 	./tuning-trouble test3.txt	
+	./tuning-trouble test4.txt	
