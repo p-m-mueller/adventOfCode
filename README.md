@@ -1,10 +1,8 @@
-Advent of Code 2022
-=== 
+Advent Of Code
+===
 
-This is my attempt to solve the 2022 puzzles from
+These are my attempts to solve the puzzles from
 
 https://adventofcode.com/
 
-I chose C as the programming language and I suppose this
-is a ridiculous complicated solution.
-However, this is more a warm up for my C programming skills.
+The subdirectories contain my solutions for the different years where I took part.
