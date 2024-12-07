@@ -10,9 +10,6 @@ const size_t MAX_LOCATIONS = 1E4;
 
 typedef unsigned int ErrorCode;
 
-const ErrorCode ALLOCATION_FAILURE = 10;
-const ErrorCode OPEN_FILE_FAILURE = 11;
-
 typedef struct LocationPairList_p *LocationPairList;
 
 struct LocationPairList_p
@@ -31,7 +28,7 @@ LocationPairList_create(LocationPairList *ll)
   if (*ll == NULL)
   {
     perror("Faield to create LocationPairList\n");
-    return ALLOCATION_FAILURE;
+    return EXIT_FAILURE;
   }
 
   // Set default values
@@ -75,7 +72,7 @@ LocationPairList_read_from_file(LocationPairList ll,
   if (fp == NULL)
   {
     perror("Failed to open file.\n");
-    return OPEN_FILE_FAILURE;
+    return EXIT_FAILURE;
   }
   else 
   {
@@ -195,6 +192,44 @@ l1_error(int *u, int *v, size_t length)
   return s;
 }
 
+/* To keep things easy here I did not really optimize the algorighm and went 
+ * for the naive method. 
+ * For each ID in left_list the complete right_list is searched
+ * for identical IDs. The score then increases by the ID if the ID occurs in 
+ * both lists.
+ * The only optimization takes into account that both lists are sorted from
+ * low to high IDs and the inner loop over the right IDs stops if the ID from
+ * the left ist smaller than the ID from the right.
+ *
+ * Defenately there is room for improvement.
+ */
+unsigned int
+similarity_socre(unsigned int *left_list, unsigned int *right_list, size_t length)
+{
+  unsigned int score = 0;
+
+  for (size_t i = 0; i < length; ++i)
+  {
+    unsigned int left = left_list[i];
+
+    for (size_t j = 0; j < length; ++j)
+    {
+      unsigned int right = right_list[j];
+
+      if (left == right)
+      {
+        score += left;
+      }
+      else if (right > left)
+      {
+        break;
+      }
+    }
+  }
+
+  return score;
+}
+
 
 int
 main(int argc, char **argv)
@@ -214,17 +249,24 @@ main(int argc, char **argv)
                                     argv[1], 
                                     strlen(argv[1]));
 
+    // Part 1
     merge_sort((int*)location_list->locationID1, 
                location_list->n_locations);
 
     merge_sort((int*)location_list->locationID2, 
                location_list->n_locations);
 
-    printf("Sum of distances: %d\n",
+    printf("Part 1; Sum of distances: %d\n",
            l1_error((int*)location_list->locationID1, 
                    (int*)location_list->locationID2,
                    location_list->n_locations));
-   
+  
+    // Part 2
+    printf("Part 2; Similarity score: %d\n", 
+           similarity_socre(location_list->locationID1, 
+                            location_list->locationID2, 
+                            location_list->n_locations));
+
     LocationPairList_destroy(&location_list);
   }
 
