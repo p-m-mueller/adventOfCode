@@ -27,6 +27,7 @@ struct Reports_p
   _Bool allocated;
 };
 
+
 ErrorCode
 Reports_destroy(Reports *reports)
 {
@@ -38,6 +39,7 @@ Reports_destroy(Reports *reports)
 
   return EXIT_SUCCESS;
 }
+
 
 ErrorCode
 Reports_create(Reports *reports)
@@ -56,6 +58,7 @@ Reports_create(Reports *reports)
 
   return EXIT_SUCCESS;
 }
+
 
 ErrorCode
 Reports_read_from_file(Reports reports, const char *filename, const unsigned int char_len)
@@ -138,6 +141,54 @@ Reports_read_from_file(Reports reports, const char *filename, const unsigned int
   return EXIT_SUCCESS;
 }
 
+
+/* Function checking the rules for a report of length report_size.
+ * See the README.md of this tasks for details on the rules.
+ *
+ * Return: true if a report and false if a report is unsafe.
+ */
+_Bool
+check_rules(const unsigned int *report, const unsigned int report_size)
+{
+    _Bool is_safe = true;
+    _Bool all_levels_increasing = true;
+    _Bool all_levels_decreasing = true;
+  
+    for (size_t j = 0; j < report_size - 1; ++j)
+    {
+      int diff = report[j+1] - report[j];
+  
+      if (diff > 0)
+      {
+        all_levels_decreasing = false;
+      }
+  
+      if (diff < 0)
+      {
+        all_levels_increasing = false;
+      }
+  
+      if (!all_levels_increasing && !all_levels_decreasing)
+      {
+        is_safe = false;
+        break;
+      }
+  
+      if (abs(diff) < 1 || abs(diff) > 3)
+      {
+        is_safe = false;
+        break;
+      }
+    }
+
+    return is_safe;
+}
+
+
+/* The function for part one checks each report if it is safe. 
+ * Return: The number of reports for which the rules check in
+ * check_rules() apply.
+ */
 size_t
 Reports_safe_reports_count(Reports reports)
 {
@@ -145,35 +196,73 @@ Reports_safe_reports_count(Reports reports)
 
   for (size_t i = 0; i < reports->n_reports; ++i)
   {
+    const unsigned int *report_p = &reports->reports[reports->report_start_p[i]];
+    const unsigned int report_size = reports->report_start_p[i+1] - reports->report_start_p[i];
 
-    _Bool is_safe = true;
-    _Bool all_levels_increasing = true;
-    _Bool all_levels_decreasing = true;
-
-    for (unsigned int j = reports->report_start_p[i]; j < reports->report_start_p[i+1]-1; ++j)
+    if (check_rules(report_p, report_size))
     {
-      int diff = reports->reports[j] - reports->reports[j+1];
+      count++;
+    }
+  }
 
-      if (diff < 0)
-      {
-        all_levels_increasing = false;
-      }
-      
-      if (diff > 0)
-      {
-        all_levels_decreasing = false;
-      }
+  return count;
+}
 
-      if (!all_levels_increasing && !all_levels_decreasing)
-      {
-        is_safe = false;
-        break;
-      }
 
-      if (abs(diff) < 1 || abs(diff) > 3)
+/* The function for part first checks if a report is safe, see 
+ * Reports_safe_reports_count().
+ * Return: The number of reports + the number of reduced reports
+ * for which the rules in check in check_ruls() applay.
+ *
+ * If a report initially is considered unsafe the rules are checkd
+ * for a set of reduced reports. The reduced reports are constructed
+ * by successively removing a single level entry.
+ */
+size_t
+Reports_damped_safe_reports_count(Reports reports)
+{
+  size_t count = 0;
+
+  for (size_t i = 0; i < reports->n_reports; ++i)
+  {
+    const unsigned int *report_p = &reports->reports[reports->report_start_p[i]];
+    const unsigned int report_size = reports->report_start_p[i+1] - reports->report_start_p[i];
+
+    _Bool is_safe = check_rules(report_p, report_size);
+
+    // If the report is considered unsafe try to remove one of the levels to
+    // make it safe.
+    if (!is_safe)
+    {
+
+      // One after an other skip the level entries
+      for (size_t skip = 0; skip < report_size; ++skip)
       {
-        is_safe = false;
-        break;
+        //printf(" Dropping level %zu.\n", skip);
+        // Create a reduced report with the level at position 'skip'
+        // missing.
+        unsigned int reduced_report[report_size-1];
+
+        // Copy the level entries to the reduced report.
+        size_t k, j;
+        for (k = 0, j = 0; j < report_size; ++j)
+        {
+          if (j == skip)
+          {
+            continue;
+          }
+          else
+          {
+            reduced_report[k] = report_p[j];
+            ++k;
+          }
+        }
+
+        if (check_rules(reduced_report, report_size-1))
+        {
+          is_safe = true;
+          break;
+        }
       }
     }
 
@@ -205,7 +294,11 @@ main(int argc, char **argv)
 
     Call(Reports_read_from_file(reports, argv[1], strlen(argv[1])));
 
+    // Part I: Count safe reports
     printf("Part 1: Number of safe reports: %zu\n", Reports_safe_reports_count(reports));
+
+    // Part II
+    printf("Part 2: Number of damped safe reports: %zu\n", Reports_damped_safe_reports_count(reports));
 
     Call(Reports_destroy(&reports)); 
   }
